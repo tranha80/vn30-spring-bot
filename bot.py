@@ -1,21 +1,19 @@
 import yfinance as yf
-import requests
 import pandas as pd
+import requests
+import time
 
-# ===== TELEGRAM =====
+# ================= TELEGRAM =================
 
 TOKEN = "8543130885:AAGf4e2BOclCnRdFR2bSCe0fUMhj0jPXufs"
 CHAT_ID = "7084665160"
 
 def send_telegram(msg):
-url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
-data = {
-"chat_id": CHAT_ID,
-"text": msg
-}
+url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+data = {"chat_id": CHAT_ID, "text": msg}
 requests.post(url, data=data)
 
-# ===== VN30 SYMBOLS =====
+# ================= VN30 LIST =================
 
 symbols = [
 "ACB.VN","BCM.VN","BID.VN","BVH.VN","CTG.VN","FPT.VN","GAS.VN","GVR.VN","HDB.VN","HPG.VN",
@@ -23,52 +21,71 @@ symbols = [
 "TCB.VN","TPB.VN","VCB.VN","VHM.VN","VIB.VN","VIC.VN","VJC.VN","VNM.VN","VPB.VN","VRE.VN"
 ]
 
+# ================= MAIN LOGIC =================
+
 def check(symbol):
-try:
-df = yf.download(symbol, interval="1d", period="3mo")
 
 ```
-    if len(df) < 30:
-        return
+df = yf.download(symbol, period="6mo", interval="1d", progress=False)
 
-    df = df.dropna()
+if len(df) < 30:
+    return
 
-    spring = df.iloc[-3]
-    test = df.iloc[-2]
-    last = df.iloc[-1]
+# ----- SPRING NẾN -----
+spring = df.iloc[-3]
 
-    avg_vol = df['Volume'].iloc[-23:-3].mean()
-    lowest_low = df['Low'].iloc[-23:-3].min()
+# ----- TEST NẾN -----
+test = df.iloc[-2]
 
-    # ===== SPRING =====
-    if spring['Low'] < lowest_low and spring['Volume'] > avg_vol * 1.5:
+# ----- BUY TRIGGER -----
+trigger = df.iloc[-1]
 
-        # ===== TEST =====
-        if test['Volume'] < spring['Volume']:
+# ----- VÙNG 20 NẾN TRƯỚC -----
+zone_low = df.iloc[-22:-3]['Low'].min()
+avg_vol  = df.iloc[-22:-3]['Volume'].mean()
 
-            # ===== BUY TRIGGER =====
-            if last['Close'] > last['Open'] and last['Volume'] > test['Volume']:
+# ================= SPRING =================
+spring_condition = (
+    spring['Low'] < zone_low and
+    spring['Close'] > spring['Open'] and
+    spring['Volume'] > avg_vol
+)
 
-                buy = round(last['High'], 2)
-                sl = round(spring['Low'], 2)
-                tp = round(buy + (buy - sl) * 2, 2)
+# ================= TEST =================
+test_condition = (
+    test['Low'] >= spring['Low'] and
+    test['Volume'] < spring['Volume']
+)
 
-                msg = f"""
+# ================= BUY TRIGGER =================
+trigger_condition = (
+    trigger['Close'] > test['High'] and
+    trigger['Volume'] > test['Volume']
+)
+
+if spring_condition and test_condition and trigger_condition:
+
+    buy_stop = round(trigger['High'] * 1.01, 2)
+
+    message = f"""
 ```
 
-SPRING DETECTED 📈
+📈 WYCKOFF SPRING - VN30
+
 Mã: {symbol.replace('.VN','')}
+Buy Stop đề xuất: {buy_stop}
 
-Buy Stop: {buy}
-Stoploss: {sl}
-TP(2R): {tp}
+Spring ✔️
+Test ✔️
+Buy Trigger ✔️
 """
-send_telegram(msg)
+send_telegram(message)
 
-```
-except Exception as e:
-    print(symbol, e)
-```
+# ================= RUN =================
 
 for s in symbols:
+try:
 check(s)
+time.sleep(3)
+except:
+pass
