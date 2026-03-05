@@ -1,6 +1,5 @@
 import yfinance as yf
 import requests
-import pandas as pd
 
 TOKEN = "8543130885:AAGf4e2BOclCnRdFR2bSCe0fUMhj0jPXufs"
 CHAT_ID = "7084665160"
@@ -30,27 +29,23 @@ def check_stock(symbol):
     if len(df) < 30:
         return
 
-    spring_low = df['Low'].iloc[-2]
-    recent_low = df['Low'].iloc[-20:-3].min()
+    spring_low = df["Low"].iloc[-2]
+    recent_low = df["Low"].iloc[-20:-3].min()
 
-    spring_volume = df['Volume'].iloc[-2]
-    avg_volume = df['Volume'].iloc[-20:-3].mean()
+    spring_volume = df["Volume"].iloc[-2]
+    avg_volume = df["Volume"].iloc[-20:-3].mean()
 
     if spring_low < recent_low and spring_volume > avg_volume * 1.5:
 
-        price = df['Close'].iloc[-1]
+        price = df["Close"].iloc[-1]
 
-        message = f"""
-SPRING DETECTED
-
-Stock: {symbol}
-Price: {price}
-"""
+        message = f"SPRING DETECTED: {symbol} | Price: {price}"
 
         send_telegram(message)
 
 
 for s in symbols:
+
     try:
         check_stock(s)
     except:
