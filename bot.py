@@ -2,72 +2,55 @@ import yfinance as yf
 import pandas as pd
 import requests
 
+# ===== TELEGRAM =====
 BOT_TOKEN = "8543130885:AAGf4e2BOclCnRdFR2bSCe0fUMhj0jPXufs"
 CHAT_ID = "7084665160"
 
-def send_telegram(msg):
+def send_telegram(message):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-    data = {
+    payload = {
         "chat_id": CHAT_ID,
-        "text": msg
+        "text": message
     }
-    requests.post(url, data=data)
+    requests.post(url, data=payload)
 
-
-VN30 = [
-"ACB","BCM","BID","BVH","CTG","FPT","GAS","GVR","HDB","HPG",
-"MBB","MSN","MWG","PLX","POW","SAB","SHB","SSB","SSI","STB",
-"TCB","TPB","VCB","VHM","VIB","VIC","VJC","VNM","VPB","VRE"
+# ===== VN30 LIST =====
+vn30 = [
+"ACB.VN","BCM.VN","BID.VN","BVH.VN","CTG.VN","FPT.VN","GAS.VN","GVR.VN",
+"HDB.VN","HPG.VN","MBB.VN","MSN.VN","MWG.VN","PLX.VN","POW.VN","SAB.VN",
+"SHB.VN","SSB.VN","SSI.VN","STB.VN","TCB.VN","TPB.VN","VCB.VN","VHM.VN",
+"VIB.VN","VIC.VN","VJC.VN","VNM.VN","VPB.VN","VRE.VN"
 ]
 
-signals = []
+spring_list = []
 
-for stock in VN30:
+for stock in vn30:
 
-    ticker = stock + ".VN"
+    df = yf.download(stock, period="6mo", interval="1d")
 
-    try:
-        df = yf.download(ticker, period="6mo", interval="1d")
-
-        if len(df) < 30:
-            continue
-
-        low_today = df["Low"].iloc[-1]
-        low_20 = df["Low"].tail(20).min()
-
-        vol_today = df["Volume"].iloc[-1]
-        vol_avg = df["Volume"].tail(20).mean()
-
-        close = df["Close"].iloc[-1]
-
-        spring = low_today < low_20
-        volume_spike = vol_today > vol_avg * 1.5
-
-        if spring and volume_spike:
-
-            msg = f"""
-SPRING DETECTED
-
-Stock: {stock}
-Price: {round(close,2)}
-Volume spike
-
-Possible Wyckoff Spring
-"""
-
-            signals.append(msg)
-
-    except:
+    if len(df) < 20:
         continue
 
+    low_20 = df["Low"].rolling(20).min()
 
-if len(signals) == 0:
+    today_low = df["Low"].iloc[-1]
+    prev_low = low_20.iloc[-2]
 
-    send_telegram("VN30 Scan: No Spring today")
+    close = df["Close"].iloc[-1]
+
+    if today_low < prev_low and close > prev_low:
+        spring_list.append(stock)
+
+if len(spring_list) > 0:
+
+    message = "VN30 SPRING DETECTED:\n"
+    for s in spring_list:
+        message += s + "\n"
 
 else:
 
-    for s in signals:
-        send_telegram(s)
+    message = "VN30 Scan: No Spring today"
+
+send_telegram(message)
 
 print("SCAN COMPLETED")
