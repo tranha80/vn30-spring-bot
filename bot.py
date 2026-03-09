@@ -1,5 +1,4 @@
 import yfinance as yf
-import pandas as pd
 import requests
 
 # ===== TELEGRAM =====
@@ -20,13 +19,7 @@ stocks = [
 "ACB.VN","BCM.VN","BID.VN","BVH.VN","CTG.VN","FPT.VN","GAS.VN","GVR.VN",
 "HDB.VN","HPG.VN","MBB.VN","MSN.VN","MWG.VN","PLX.VN","POW.VN","SAB.VN",
 "SHB.VN","SSB.VN","SSI.VN","STB.VN","TCB.VN","TPB.VN","VCB.VN","VHM.VN",
-"VIB.VN","VIC.VN","VJC.VN","VNM.VN","VPB.VN","VRE.VN",
-
-"DXG.VN","DIG.VN","PDR.VN","NLG.VN","KDH.VN","NVL.VN",
-"VND.VN","HCM.VN","VCI.VN","CTS.VN","BSI.VN",
-"DPM.VN","DCM.VN","GMD.VN","REE.VN","PC1.VN",
-"ANV.VN","IDI.VN","VHC.VN","ASM.VN",
-"HHV.VN","CII.VN","HT1.VN","KBC.VN"
+"VIB.VN","VIC.VN","VJC.VN","VNM.VN","VPB.VN","VRE.VN"
 ]
 
 signals = []
@@ -37,37 +30,31 @@ for stock in stocks:
 
         df = yf.download(stock, period="6mo", interval="1d", progress=False)
 
-        if df.empty or len(df) < 30:
+        if df is None or len(df) < 25:
             continue
 
-        # đảm bảo chỉ lấy đúng cột
-        df = df[["Open","High","Low","Close","Volume"]]
+        # reset index để tránh lỗi pandas
+        df = df.reset_index()
 
-        df["low20"] = df["Low"].rolling(20).min()
-        df["vol_avg"] = df["Volume"].rolling(20).mean()
+        # lấy giá trị float
+        low_today = float(df["Low"].iloc[-1])
+        close_today = float(df["Close"].iloc[-1])
+        volume_today = float(df["Volume"].iloc[-1])
 
-        today = df.iloc[-1]
-        yesterday = df.iloc[-2]
-        prev = df.iloc[-3]
+        # 20 ngày trước
+        low20 = float(df["Low"].iloc[-21:-1].min())
 
-        today_low = float(today["Low"])
-        today_close = float(today["Close"])
-        today_volume = float(today["Volume"])
-
-        prev_low20 = float(yesterday["low20"])
-        vol_avg = float(today["vol_avg"])
-        prev_low = float(prev["Low"])
+        # volume trung bình
+        vol_avg = float(df["Volume"].iloc[-21:-1].mean())
 
         # ===== SPRING =====
-        spring = today_low < prev_low20 and today_close > prev_low20
+        spring = low_today < low20 and close_today > low20
 
         # ===== VOLUME SPIKE =====
-        volume_spike = today_volume > vol_avg * 1.5
+        volume_spike = volume_today > vol_avg * 1.5
 
-        # ===== TEST =====
-        test = today_low > prev_low
+        if spring and volume_spike:
 
-        if spring and volume_spike and test:
             signals.append(stock.replace(".VN",""))
 
     except Exception as e:
@@ -79,14 +66,14 @@ for stock in stocks:
 
 if len(signals) > 0:
 
-    message = "🚨 WYCKOFF SPRING + TEST\n\n"
+    message = "🚨 WYCKOFF SPRING DETECTED\n\n"
 
     for s in signals:
         message += f"{s}\n"
 
 else:
 
-    message = "Market Scan: No Spring today"
+    message = "VN30 Scan: No Spring today"
 
 
 send_telegram(message)
