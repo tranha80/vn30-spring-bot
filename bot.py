@@ -14,7 +14,7 @@ def send_telegram(message):
     }
     requests.post(url, data=payload)
 
-# ===== STOCK LIST (HOSE phổ biến) =====
+# ===== STOCK LIST =====
 stocks = [
 "ACB.VN","BCM.VN","BID.VN","BVH.VN","CTG.VN","FPT.VN","GAS.VN","GVR.VN",
 "HDB.VN","HPG.VN","MBB.VN","MSN.VN","MWG.VN","PLX.VN","POW.VN","SAB.VN",
@@ -28,41 +28,53 @@ stocks = [
 "HHV.VN","CII.VN","HT1.VN","KBC.VN"
 ]
 
-spring_candidates = []
+signals = []
 
 for stock in stocks:
 
-    df = yf.download(stock, period="6mo", interval="1d")
+    try:
 
-    if len(df) < 30:
+        df = yf.download(stock, period="6mo", interval="1d")
+
+        if len(df) < 30:
+            continue
+
+        df["low20"] = df["Low"].rolling(20).min()
+        df["vol_avg"] = df["Volume"].rolling(20).mean()
+
+        today = df.iloc[-1]
+        yesterday = df.iloc[-2]
+        prev = df.iloc[-3]
+
+        today_low = float(today["Low"])
+        today_close = float(today["Close"])
+        today_volume = float(today["Volume"])
+
+        prev_low20 = float(yesterday["low20"])
+        vol_avg = float(today["vol_avg"])
+
+        # ===== SPRING =====
+        spring = today_low < prev_low20 and today_close > prev_low20
+
+        # ===== VOLUME SPIKE =====
+        volume_spike = today_volume > vol_avg * 1.5
+
+        # ===== TEST =====
+        test = today_low > float(prev["Low"])
+
+        if spring and volume_spike and test:
+            signals.append(stock.replace(".VN",""))
+
+    except:
         continue
-
-    df["low20"] = df["Low"].rolling(20).min()
-    df["vol_avg"] = df["Volume"].rolling(20).mean()
-
-    today = df.iloc[-1]
-    yesterday = df.iloc[-2]
-    prev = df.iloc[-3]
-
-    # ===== SPRING =====
-    spring = today["Low"] < yesterday["low20"] and today["Close"] > yesterday["low20"]
-
-    # ===== VOLUME SPIKE =====
-    volume_spike = today["Volume"] > today["vol_avg"] * 1.5
-
-    # ===== TEST =====
-    test = today["Low"] > prev["Low"]
-
-    if spring and volume_spike and test:
-        spring_candidates.append(stock.replace(".VN",""))
 
 # ===== TELEGRAM MESSAGE =====
 
-if len(spring_candidates) > 0:
+if len(signals) > 0:
 
     message = "🚨 WYCKOFF SPRING + TEST\n\n"
 
-    for s in spring_candidates:
+    for s in signals:
         message += f"{s}\n"
 
 else:
