@@ -14,6 +14,7 @@ def send_telegram(message):
     }
     requests.post(url, data=payload)
 
+
 # ===== STOCK LIST =====
 stocks = [
 "ACB.VN","BCM.VN","BID.VN","BVH.VN","CTG.VN","FPT.VN","GAS.VN","GVR.VN",
@@ -34,10 +35,13 @@ for stock in stocks:
 
     try:
 
-        df = yf.download(stock, period="6mo", interval="1d")
+        df = yf.download(stock, period="6mo", interval="1d", progress=False)
 
-        if len(df) < 30:
+        if df.empty or len(df) < 30:
             continue
+
+        # đảm bảo chỉ lấy đúng cột
+        df = df[["Open","High","Low","Close","Volume"]]
 
         df["low20"] = df["Low"].rolling(20).min()
         df["vol_avg"] = df["Volume"].rolling(20).mean()
@@ -52,6 +56,7 @@ for stock in stocks:
 
         prev_low20 = float(yesterday["low20"])
         vol_avg = float(today["vol_avg"])
+        prev_low = float(prev["Low"])
 
         # ===== SPRING =====
         spring = today_low < prev_low20 and today_close > prev_low20
@@ -60,13 +65,15 @@ for stock in stocks:
         volume_spike = today_volume > vol_avg * 1.5
 
         # ===== TEST =====
-        test = today_low > float(prev["Low"])
+        test = today_low > prev_low
 
         if spring and volume_spike and test:
             signals.append(stock.replace(".VN",""))
 
-    except:
+    except Exception as e:
+        print("Error:", stock, e)
         continue
+
 
 # ===== TELEGRAM MESSAGE =====
 
@@ -80,6 +87,7 @@ if len(signals) > 0:
 else:
 
     message = "Market Scan: No Spring today"
+
 
 send_telegram(message)
 
