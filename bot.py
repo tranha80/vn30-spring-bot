@@ -2,7 +2,7 @@ import yfinance as yf
 import pandas as pd
 import requests
 
-TOKEN = "8543130885:AAGf4e2BOclCnRdFR2bSCe0fUMhj0jPXufs"
+BOT_TOKEN = "8543130885:AAGf4e2BOclCnRdFR2bSCe0fUMhj0jPXufs"
 CHAT_ID = "7084665160"
 
 def send_telegram(msg):
