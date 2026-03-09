@@ -13,13 +13,32 @@ def send_telegram(message):
     }
     requests.post(url, data=payload)
 
-
 # ===== STOCK LIST =====
 stocks = [
+
+# VN30
 "ACB.VN","BCM.VN","BID.VN","BVH.VN","CTG.VN","FPT.VN","GAS.VN","GVR.VN",
 "HDB.VN","HPG.VN","MBB.VN","MSN.VN","MWG.VN","PLX.VN","POW.VN","SAB.VN",
 "SHB.VN","SSB.VN","SSI.VN","STB.VN","TCB.VN","TPB.VN","VCB.VN","VHM.VN",
-"VIB.VN","VIC.VN","VJC.VN","VNM.VN","VPB.VN","VRE.VN"
+"VIB.VN","VIC.VN","VJC.VN","VNM.VN","VPB.VN","VRE.VN",
+
+# BĐS
+"DXG.VN","DIG.VN","PDR.VN","NLG.VN","KDH.VN","NVL.VN","SCR.VN","HDC.VN",
+
+# Chứng khoán
+"VND.VN","HCM.VN","VCI.VN","CTS.VN","BSI.VN","FTS.VN","AGR.VN",
+
+# Ngân hàng
+"EIB.VN","LPB.VN","OCB.VN","BVB.VN",
+
+# Công nghiệp
+"REE.VN","PC1.VN","GMD.VN","HHV.VN","CII.VN",
+
+# Thủy sản
+"VHC.VN","ANV.VN","IDI.VN","ASM.VN",
+
+# Khác
+"DPM.VN","DCM.VN","HT1.VN","KBC.VN","SZC.VN","PAN.VN"
 ]
 
 signals = []
@@ -33,18 +52,13 @@ for stock in stocks:
         if df is None or len(df) < 25:
             continue
 
-        # reset index để tránh lỗi pandas
         df = df.reset_index()
 
-        # lấy giá trị float
         low_today = float(df["Low"].iloc[-1])
         close_today = float(df["Close"].iloc[-1])
         volume_today = float(df["Volume"].iloc[-1])
 
-        # 20 ngày trước
         low20 = float(df["Low"].iloc[-21:-1].min())
-
-        # volume trung bình
         vol_avg = float(df["Volume"].iloc[-21:-1].mean())
 
         # ===== SPRING =====
@@ -54,11 +68,9 @@ for stock in stocks:
         volume_spike = volume_today > vol_avg * 1.5
 
         if spring and volume_spike:
-
             signals.append(stock.replace(".VN",""))
 
-    except Exception as e:
-        print("Error:", stock, e)
+    except:
         continue
 
 
@@ -66,15 +78,14 @@ for stock in stocks:
 
 if len(signals) > 0:
 
-    message = "🚨 WYCKOFF SPRING DETECTED\n\n"
+    message = "🚨 WYCKOFF SPRING ALERT\n\n"
 
     for s in signals:
         message += f"{s}\n"
 
 else:
 
-    message = "VN30 Scan: No Spring today"
-
+    message = "Market Scan: No Spring today"
 
 send_telegram(message)
 
